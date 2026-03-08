@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 2%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 142 71% 45%;
+    --accent-foreground: 0 0% 2%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 142 40% 20%;
+    --input: 0 0% 15%;
+    --ring: 142 71% 45%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary-foreground: 0 0% 2%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 142 40% 15%;
+    --sidebar-ring: 142 71% 45%;
+
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 2%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 2%;
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glow-green {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.15), 0 0 30px hsl(var(--primary) / 0.05);
+  }
+
+  .glow-green-sm {
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.1);
+  }
+
+  .card-medical {
+    @apply bg-card border border-border rounded-lg p-5 glow-green-sm;
+  }
+
+  .stat-card {
+    @apply bg-card border border-border rounded-lg p-4 glow-green-sm;
+  }
+
+  .stat-card-danger {
+    border-color: hsl(var(--danger) / 0.35);
+  }
+
+  .stat-card-warning {
+    border-color: hsl(var(--warning) / 0.35);
+  }
+
+  .stat-card-success {
+    border-color: hsl(var(--success) / 0.35);
+  }
+
+  .icon-soft-primary {
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.12);
+  }
+
+  .icon-soft-danger {
+    color: hsl(var(--danger));
+    background-color: hsl(var(--danger) / 0.12);
+  }
+
+  .icon-soft-warning {
+    color: hsl(var(--warning));
+    background-color: hsl(var(--warning) / 0.12);
+  }
+
+  .icon-soft-success {
+    color: hsl(var(--success));
+    background-color: hsl(var(--success) / 0.12);
+  }
+
+  .risk-high {
+    color: hsl(var(--danger));
+    background-color: hsl(var(--danger) / 0.1);
+    border-color: hsl(var(--danger) / 0.35);
+  }
+
+  .risk-medium {
+    color: hsl(var(--warning));
+    background-color: hsl(var(--warning) / 0.1);
+    border-color: hsl(var(--warning) / 0.35);
+  }
+
+  .risk-low {
+    color: hsl(var(--success));
+    background-color: hsl(var(--success) / 0.1);
+    border-color: hsl(var(--success) / 0.35);
+  }
+
+  .risk-row-high {
+    background-color: hsl(var(--danger) / 0.06);
+  }
+
+  .status-chip {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-chip-danger {
+    color: hsl(var(--danger));
+    background-color: hsl(var(--danger) / 0.12);
+  }
+
+  .status-chip-warning {
+    color: hsl(var(--warning));
+    background-color: hsl(var(--warning) / 0.12);
+  }
+
+  .status-chip-success {
+    color: hsl(var(--success));
+    background-color: hsl(var(--success) / 0.12);
+  }
+
+  .status-chip-info {
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.12);
+  }
+
+  .surface-danger {
+    background-color: hsl(var(--danger) / 0.08);
+    border: 1px solid hsl(var(--danger) / 0.35);
+  }
+
+  .surface-warning {
+    background-color: hsl(var(--warning) / 0.08);
+    border: 1px solid hsl(var(--warning) / 0.35);
+  }
+
+  .surface-success {
+    background-color: hsl(var(--success) / 0.08);
+    border: 1px solid hsl(var(--success) / 0.35);
+  }
+
+  .alert-urgent {
+    background-color: hsl(var(--danger) / 0.12);
+    border: 2px solid hsl(var(--danger) / 0.4);
+    color: hsl(var(--danger));
+  }
+
+  .status-online-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background-color: hsl(var(--success));
+    box-shadow: 0 0 10px hsl(var(--success) / 0.5);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
