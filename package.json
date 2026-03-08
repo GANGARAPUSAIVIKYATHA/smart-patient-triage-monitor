@@ -1,0 +1,25 @@
+{
+  "name": "ai-triage-monitor-main",
+  "version": "1.0.0",
+  "description": "This platform provides an AI-driven triage system for healthcare centers. It includes a React/TypeScript frontend and a Node.js/Express/MongoDB backend with real-time updates via Socket.io.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix ai-triage-monitor-main\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GANGARAPUSAIVIKYATHA/smart-patient-triage-monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GANGARAPUSAIVIKYATHA/smart-patient-triage-monitor/issues"
+  },
+  "homepage": "https://github.com/GANGARAPUSAIVIKYATHA/smart-patient-triage-monitor#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

@@ -16,7 +16,18 @@ This platform provides an AI-driven triage system for healthcare centers. It inc
 
 ## How to Run
 
-### Backend
+### Shortcut (Unified Command)
+Run everything at once:
+```powershell
+npm run dev
+```
+Or run the batch file on Windows:
+```powershell
+./run_platform.bat
+```
+
+### Manual Run
+#### Backend
 1. `cd backend`
 2. `npm install`
 3. Create a `.env` file with `MONGO_URI`, `JWT_SECRET`, and `PORT`.
