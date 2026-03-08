@@ -122,12 +122,12 @@ interface AppStateContextValue {
   patients: PatientUser[];
   appointments: Appointment[];
   analyses: AnalysisRecord[];
-  registerUser: (payload: RegisterPayload) => ActionResult;
-  login: (role: UserRole, email: string, password: string) => ActionResult;
+  registerUser: (payload: RegisterPayload) => Promise<ActionResult>;
+  login: (role: UserRole, email: string, password: string) => Promise<ActionResult>;
   logout: () => void;
-  bookAppointment: (payload: { department: string; doctorId: string; timeSlot: string }) => ActionResult;
-  submitAnalysis: (payload: AnalysisPayload) => { ok: boolean; message: string; record?: AnalysisRecord };
-  updatePatientStatus: (recordId: string, status: PatientFlowStatus) => void;
+  bookAppointment: (payload: { department: string; doctorId: string; timeSlot: string }) => Promise<ActionResult>;
+  submitAnalysis: (payload: AnalysisPayload) => Promise<{ ok: boolean; message: string; record?: AnalysisRecord }>;
+  updatePatientStatus: (recordId: string, status: PatientFlowStatus) => Promise<void>;
   refreshFromStorage: () => void;
 }
 
@@ -175,232 +175,146 @@ const loadStore = (): AppStateStore => {
   }
 };
 
+const API_URL = "http://localhost:5000/api";
+
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
-  const [store, setStore] = useState<AppStateStore>(() => loadStore());
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  }, [store]);
+  const doctors = useMemo(() => users.filter((user): user is DoctorUser => user.role === "doctor"), [users]);
+  const patients = useMemo(() => users.filter((user): user is PatientUser => user.role === "patient"), [users]);
 
-  const currentUser = useMemo(() => store.users.find((user) => user.id === store.currentUserId) ?? null, [store.users, store.currentUserId]);
-  const doctors = useMemo(() => store.users.filter((user): user is DoctorUser => user.role === "doctor"), [store.users]);
-  const patients = useMemo(() => store.users.filter((user): user is PatientUser => user.role === "patient"), [store.users]);
-
-  const registerUser = (payload: RegisterPayload): ActionResult => {
-    if (store.users.some((user) => user.email.toLowerCase() === payload.email.toLowerCase())) {
-      return { ok: false, message: "Email already registered." };
-    }
-
-    if (payload.role === "doctor" && currentUser?.role !== "admin") {
-      return { ok: false, message: "Only admins can register doctor accounts." };
-    }
-
-    const createdAt = new Date().toISOString();
-    const baseUser = {
-      id: createId(),
-      role: payload.role,
-      email: payload.email,
-      password: payload.password,
-      displayName: payload.displayName,
-      createdAt,
-    };
-
-    let user: AppUser;
-
-    switch (payload.role) {
-      case "patient":
-        user = {
-          ...baseUser,
-          role: "patient",
-          age: payload.age ?? 0,
-          gender: payload.gender ?? "Not specified",
-          phone: payload.phone ?? "",
-        };
-        break;
-      case "doctor":
-        user = {
-          ...baseUser,
-          role: "doctor",
-          department: payload.department ?? "General Medicine",
-          experience: payload.experience ?? "0 years",
-          hospitalId: payload.hospitalId ?? "",
-          availableTime: payload.availableTime ?? "09:00 - 11:00",
-          availabilityStatus: "Available",
-        };
-        break;
-      case "staff":
-        user = {
-          ...baseUser,
-          role: "staff",
-          staffRole: payload.staffRole ?? "Front Desk",
-        };
-        break;
-      case "admin":
-      default:
-        user = {
-          ...baseUser,
-          role: "admin",
-        };
-        break;
-    }
-
-    const shouldAutoLogin = payload.role !== "doctor";
-
-    setStore({
-      ...store,
-      users: [...store.users, user],
-      currentUserId: shouldAutoLogin ? user.id : store.currentUserId,
-    });
-
+  const getHeaders = () => {
+    const token = localStorage.getItem("token");
     return {
-      ok: true,
-      message: payload.role === "doctor" ? "Doctor registered successfully." : "Account created successfully.",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     };
   };
 
-  const login = (role: UserRole, email: string, password: string): ActionResult => {
-    const user = store.users.find(
-      (candidate) =>
-        candidate.role === role &&
-        candidate.email.toLowerCase() === email.trim().toLowerCase() &&
-        candidate.password === password,
-    );
-
-    if (!user) {
-      return { ok: false, message: "Invalid credentials for selected role." };
+  const fetchCurrentUser = async () => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const userJson = localStorage.getItem("user");
+    if (token && role && userJson) {
+      setCurrentUser(JSON.parse(userJson));
     }
+    setLoading(false);
+  };
 
-    setStore({
-      ...store,
-      currentUserId: user.id,
-    });
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
 
-    return { ok: true, message: "Login successful." };
+  const registerUser = async (payload: RegisterPayload): Promise<ActionResult> => {
+    try {
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) return { ok: false, message: data.message || "Registration failed" };
+
+      if (payload.role !== "doctor") {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("user", JSON.stringify(data));
+        setCurrentUser(data);
+      }
+      return { ok: true, message: "Registration successful" };
+    } catch (error) {
+      return { ok: false, message: "Network error" };
+    }
+  };
+
+  const login = async (role: UserRole, email: string, password: string): Promise<ActionResult> => {
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role }),
+      });
+      const data = await response.json();
+      if (!response.ok) return { ok: false, message: data.message || "Login failed" };
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+      localStorage.setItem("user", JSON.stringify(data));
+      setCurrentUser(data);
+      return { ok: true, message: "Login successful" };
+    } catch (error) {
+      return { ok: false, message: "Network error" };
+    }
   };
 
   const logout = () => {
-    setStore({
-      ...store,
-      currentUserId: null,
-    });
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    setCurrentUser(null);
   };
 
-  const bookAppointment = (payload: { department: string; doctorId: string; timeSlot: string }): ActionResult => {
-    if (!currentUser || currentUser.role !== "patient") {
-      return { ok: false, message: "Only logged-in patients can book appointments." };
+  const bookAppointment = async (payload: { department: string; doctorId: string; timeSlot: string }): Promise<ActionResult> => {
+    try {
+      const response = await fetch(`${API_URL}/patient/book-appointment`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) return { ok: false, message: data.message || "Booking failed" };
+      return { ok: true, message: "Appointment booked successfully" };
+    } catch (error) {
+      return { ok: false, message: "Network error" };
     }
-
-    const doctor = doctors.find((candidate) => candidate.id === payload.doctorId);
-
-    if (!doctor) {
-      return { ok: false, message: "Selected doctor was not found." };
-    }
-
-    const appointment: Appointment = {
-      id: createId(),
-      patientId: currentUser.id,
-      patientName: currentUser.displayName,
-      doctorId: doctor.id,
-      doctorName: doctor.displayName,
-      department: payload.department,
-      timeSlot: payload.timeSlot,
-      status: "Waiting",
-      createdAt: new Date().toISOString(),
-    };
-
-    setStore({
-      ...store,
-      appointments: [appointment, ...store.appointments],
-    });
-
-    return { ok: true, message: "Appointment booked successfully." };
   };
 
-  const submitAnalysis = (payload: AnalysisPayload) => {
-    if (!currentUser || currentUser.role !== "patient") {
-      return { ok: false, message: "Only logged-in patients can submit analysis." };
+  const submitAnalysis = async (payload: AnalysisPayload) => {
+    try {
+      const response = await fetch(`${API_URL}/patient/submit-health-data`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) return { ok: false, message: data.message || "Submission failed" };
+      return { ok: true, message: "Analysis completed", record: data.analysis };
+    } catch (error) {
+      return { ok: false, message: "Network error" };
     }
-
-    const triage = analyzeTriage({
-      symptoms: payload.symptoms,
-      bloodPressure: payload.bloodPressure,
-      heartRate: payload.heartRate,
-      temperature: payload.temperature,
-      conditions: payload.conditions,
-    });
-
-    const linkedDoctor = payload.doctorId ? doctors.find((doctor) => doctor.id === payload.doctorId) : undefined;
-
-    const appointment = [...store.appointments]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .find((candidate) => candidate.patientId === currentUser.id && (!linkedDoctor || candidate.doctorId === linkedDoctor.id));
-
-    const record: AnalysisRecord = {
-      id: createId(),
-      patientId: currentUser.id,
-      patientName: payload.fullName,
-      age: payload.age,
-      gender: payload.gender,
-      symptoms: payload.symptoms,
-      bloodPressure: payload.bloodPressure,
-      heartRate: payload.heartRate,
-      temperature: payload.temperature,
-      conditions: payload.conditions,
-      riskLevel: triage.riskLevel,
-      recommendedDepartment: triage.recommendedDepartment,
-      confidence: triage.confidence,
-      explanations: triage.explanations,
-      doctorId: linkedDoctor?.id ?? appointment?.doctorId,
-      doctorName: linkedDoctor?.displayName ?? appointment?.doctorName,
-      department: linkedDoctor?.department ?? appointment?.department ?? triage.recommendedDepartment,
-      status: "Waiting",
-      appointmentId: appointment?.id,
-      createdAt: new Date().toISOString(),
-    };
-
-    setStore({
-      ...store,
-      analyses: [record, ...store.analyses],
-    });
-
-    return {
-      ok: true,
-      message: "Health analysis completed.",
-      record,
-    };
   };
 
-  const updatePatientStatus = (recordId: string, status: PatientFlowStatus) => {
-    const updatedAnalyses = store.analyses.map((entry) => (entry.id === recordId ? { ...entry, status } : entry));
-
-    const selectedRecord = updatedAnalyses.find((entry) => entry.id === recordId);
-
-    const updatedAppointments = selectedRecord?.appointmentId
-      ? store.appointments.map((appointment) =>
-          appointment.id === selectedRecord.appointmentId ? { ...appointment, status } : appointment,
-        )
-      : store.appointments;
-
-    setStore({
-      ...store,
-      analyses: updatedAnalyses,
-      appointments: updatedAppointments,
-    });
+  const updatePatientStatus = async (recordId: string, status: PatientFlowStatus) => {
+    try {
+      await fetch(`${API_URL}/doctor/update-status`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ patientId: recordId, status }),
+      });
+    } catch (error) {
+      console.error("Failed to update status");
+    }
   };
 
   const refreshFromStorage = () => {
-    setStore(loadStore());
+    // No-op or fetch from API
   };
+
+  if (loading) return null;
 
   return (
     <AppStateContext.Provider
       value={{
         currentUser,
-        users: store.users,
+        users,
         doctors,
         patients,
-        appointments: store.appointments,
-        analyses: store.analyses,
+        appointments,
+        analyses,
         registerUser,
         login,
         logout,
